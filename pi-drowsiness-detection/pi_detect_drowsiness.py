@@ -1,6 +1,6 @@
 # USAGE
-# python pi_detect_drowsiness.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat
-# python pi_detect_drowsiness.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat --alarm 1
+# python3 pi_detect_drowsiness.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat
+# python3 pi_detect_drowsiness.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat --alarm 1
 
 # import the necessary packages
 from imutils.video import VideoStream
@@ -44,10 +44,10 @@ ap.add_argument("-a", "--alarm", type=int, default=0,
 args = vars(ap.parse_args())
 
 # check to see if we are using GPIO/TrafficHat as an alarm
-if args["alarm"] > 0:
-	from gpiozero import TrafficHat
-	th = TrafficHat()
-	print("[INFO] using TrafficHat alarm...")
+# if args["alarm"] > 0:
+# 	from gpiozero import TrafficHat
+# 	th = TrafficHat()
+# 	print("[INFO] using TrafficHat alarm...")
  
 # define two constants, one for the eye aspect ratio to indicate
 # blink and then a second constant for the number of consecutive
@@ -137,9 +137,9 @@ while True:
 
 					# check to see if the TrafficHat buzzer should
 					# be sounded
-					if args["alarm"] > 0:
-						th.buzzer.blink(0.1, 0.1, 10,
-							background=True)
+					# if args["alarm"] > 0:
+					# 	th.buzzer.blink(0.1, 0.1, 10,
+					# 		background=True)
 
 				# draw an alarm on the frame
 				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),

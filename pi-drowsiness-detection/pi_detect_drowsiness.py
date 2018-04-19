@@ -137,13 +137,15 @@ while True:
 
 					# check to see if the TrafficHat buzzer should
 					# be sounded
-					# if args["alarm"] > 0:
+					 if args["alarm"] > 0:
+                            
+                        print("alarm!!!!")
 					# 	th.buzzer.blink(0.1, 0.1, 10,
 					# 		background=True)
 
 				# draw an alarm on the frame
-				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
-					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+#				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
+#					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 		# otherwise, the eye aspect ratio is not below the blink
 		# threshold, so reset the counter and alarm
@@ -154,12 +156,12 @@ while True:
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
 		# thresholds and frame counters
-		cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+#		cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30),
+#			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
  
 	# show the frame
-	cv2.imshow("Frame", frame)
-	key = cv2.waitKey(1) & 0xFF
+#	cv2.imshow("Frame", frame)
+#	key = cv2.waitKey(1) & 0xFF
  
 	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):

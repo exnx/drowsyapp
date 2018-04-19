@@ -79,6 +79,11 @@ vs = VideoStream(src=0).start()
 # vs = VideoStream(usePiCamera=True).start()
 time.sleep(1.0)
 
+
+# test 
+
+print("got here!!!! hi sam")
+
 # loop over frames from the video stream
 while True:
 	# grab the frame from the threaded video file stream, resize

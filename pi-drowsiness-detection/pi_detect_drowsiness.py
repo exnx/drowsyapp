@@ -82,10 +82,12 @@ time.sleep(1.0)
 
 # test 
 
-print("got here!!!! hi sam")
 
 # loop over frames from the video stream
 while True:
+    print("got inside while loop!!!! hi sam")
+
+    
 	# grab the frame from the threaded video file stream, resize
 	# it, and convert it to grayscale
 	# channels)

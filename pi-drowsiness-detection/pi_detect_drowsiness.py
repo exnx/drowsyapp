@@ -137,7 +137,7 @@ while True:
 
 					# check to see if the TrafficHat buzzer should
 					# be sounded
-					 if args["alarm"] > 0:
+				    if args["alarm"] > 0:
                             
                         print("alarm!!!!")
 					# 	th.buzzer.blink(0.1, 0.1, 10,

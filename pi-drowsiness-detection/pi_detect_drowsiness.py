@@ -81,13 +81,10 @@ time.sleep(1.0)
 
 
 # test 
-
+i = 0
 
 # loop over frames from the video stream
 while True:
-    print("got inside while loop!!!! hi sam")
-
-    
 	# grab the frame from the threaded video file stream, resize
 	# it, and convert it to grayscale
 	# channels)
@@ -102,6 +99,7 @@ while True:
 
 	# loop over the face detections
 	for (x, y, w, h) in rects:
+		
 		# construct a dlib rectangle object from the Haar cascade
 		# bounding box
 		rect = dlib.rectangle(int(x), int(y), int(x + w),
@@ -129,35 +127,37 @@ while True:
 		rightEyeHull = cv2.convexHull(rightEye)
 		cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
 		cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
-
 		# check to see if the eye aspect ratio is below the blink
 		# threshold, and if so, increment the blink frame counter
 		if ear < EYE_AR_THRESH:
+			print("eyes are closed {}, counter = {}".format(i, COUNTER))
+			i+=1
+			
 			COUNTER += 1
-
 			# if the eyes were closed for a sufficient number of
 			# frames, then sound the alarm
-			if COUNTER >= EYE_AR_CONSEC_FRAMES:
+			if COUNTER >= EYE_AR_CONSEC_FRAMES and args["alarm"]:
+				print("ALARM")
 				# if the alarm is not on, turn it on
-				if not ALARM_ON:
-					ALARM_ON = True
-
+				# if not ALARM_ON:
+				# 	ALARM_ON = True
+					
 					# check to see if the TrafficHat buzzer should
 					# be sounded
-				if args["alarm"] > 0: print("alarm!!!!")
-                        
+				# if args["alarm"] > 0: 
+				# 	print("alarm!!!!")    
 					# 	th.buzzer.blink(0.1, 0.1, 10,
 					# 		background=True)
-
 				# draw an alarm on the frame
 #				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
 #					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
 		# otherwise, the eye aspect ratio is not below the blink
 		# threshold, so reset the counter and alarm
 		else:
 			COUNTER = 0
-			ALARM_ON = False
+			print("eyes are opened {}, counter = {}".format(i, COUNTER))
+			i+=1
+			# ALARM_ON = False
 
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio

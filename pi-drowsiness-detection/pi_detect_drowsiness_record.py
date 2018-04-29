@@ -11,6 +11,32 @@ import imutils
 import time
 import dlib
 import cv2
+import os
+
+## -------------  
+
+FILE_OUTPUT = ''
+
+# check for duplicate files, adds time stamp
+if os.path.exists('output.avi'):
+    FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+else:
+    FILE_OUTPUT = 'output.avi'
+
+# for recording the video
+cap = cv2.VideoCapture(0)
+width_val = int(cap.get(3))
+height_val = int(cap.get(4))
+
+time.sleep(2.0)  # let camera warm up
+
+# Define the codec and create VideoWriter object
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+
+# the video writer object
+out = cv2.VideoWriter(FILE_OUTPUT,fourcc, 20.0, (int(width_val),int(height_val)))
+
+## -------------  
 
 def euclidean_dist(ptA, ptB):
 	# compute and return the euclidean distance between the two
@@ -43,11 +69,6 @@ ap.add_argument("-a", "--alarm", type=int, default=0,
 	help="boolean used to indicate if TraffHat should be used")
 args = vars(ap.parse_args())
 
-# check to see if we are using GPIO/TrafficHat as an alarm
-# if args["alarm"] > 0:
-# 	from gpiozero import TrafficHat
-# 	th = TrafficHat()
-# 	print("[INFO] using TrafficHat alarm...")
  
 # define two constants, one for the eye aspect ratio to indicate
 # blink and then a second constant for the number of consecutive
@@ -75,7 +96,7 @@ predictor = dlib.shape_predictor(args["shape_predictor"])
 
 # start the video stream thread
 print("[INFO] starting video stream thread...")
-vs = VideoStream(src=1).start()
+vs = VideoStream().start()
 # vs = VideoStream(usePiCamera=True).start()
 time.sleep(1.0)
 
@@ -89,7 +110,7 @@ while True:
 	# it, and convert it to grayscale
 	# channels)
 	frame = vs.read()
-	frame = imutils.resize(frame, width=450)
+	# frame = imutils.resize(frame, width=450)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 	# detect faces in the grayscale frame
@@ -149,8 +170,8 @@ while True:
 					# 	th.buzzer.blink(0.1, 0.1, 10,
 					# 		background=True)
 				# draw an alarm on the frame
-#				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
-#					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
+					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 		# otherwise, the eye aspect ratio is not below the blink
 		# threshold, so reset the counter and alarm
 		else:
@@ -167,6 +188,8 @@ while True:
  
 	# show the frame
 	cv2.imshow("Frame", frame)
+	
+	out.write(frame)  # recording the video to file
 
 	key = cv2.waitKey(1) & 0xFF
  

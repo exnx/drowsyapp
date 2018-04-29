@@ -22,14 +22,16 @@ WARNING_THRESHOLD = 2 # number of warnings to allow before alarm instead
 available_ports = []
 
 ARDUINO_PORT = None
+OBD_PORT = None
 BUTTON_THRESHOLD = 1.5 # number of seconds to hold button to dismiss alarm
 buttonPressStart = None
+speed = 0
 
 args = {
     "cascade": "haarcascade_frontalface_default.xml",
     "shape_predictor": "shape_predictor_68_face_landmarks.dat"
 }
-EYE_AR_THRESH = 0.18 # originally 0.3
+EYE_AR_THRESH = 0.2 # originally 0.3
 EYE_AR_CONSEC_FRAMES = 16
 lStart = None
 lEnd = None
@@ -112,7 +114,6 @@ def connectToArduino(port='/dev/ttyUSB0'):
 
 def initialize_Arduino():
     global STATE, OKAY, WARNING, ALARM, WARNING_COUNTER, buttonPressStart, available_ports
-    get_available_serial_ports()
     portName = getPortName("arduino")
     if checkForArduino(portName):
         connectToArduino(portName)
@@ -152,23 +153,15 @@ def checkForOBD(OBDPortName='/dev/ttyUSB1'):
         print("FIND OBD: FAIL")
     return result
 
-def speedHandler(r):
-    speed = float(str(r.value.to("mph"))[:-3])
-    if speed > 3:
-        print("SPEED OVER 3 MPH")
-
 def initialize_OBD():
     global OBD_PORT, available_ports
-    get_available_serial_ports()
     portName = getPortName("obd")
     if checkForOBD(portName):
         OBD_PORT = obd.Async(portName, baudrate=115200)
         if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
             print("OBD INITIALIZE: SUCCESS")
-            OBD_PORT.watch(obd.commands.SPEED, callback=speedHandler)
+            OBD_PORT.watch(obd.commands.SPEED)
             OBD_PORT.start()
-            time.sleep(60)
-            OBD_PORT.stop()
             print("OBD RUNNING: SUCCESS")
         else:
             print("OBD INITIALIZE: FAIL")
@@ -262,6 +255,11 @@ def handleCamera():
                 else:
                     openStart = time.time()  # start timer for eyes closed
 
+def handleOBD():
+    global OBD_PORT, speed
+    speed = OBD_PORT.query(obd.commands.SPEED).value.magnitude
+    print("SPEED: {}".format(speed)) # non-blocking, returns immediately
+
 def main():
     global STATE, OKAY, WARNING, ALARM
     i = 0
@@ -277,17 +275,24 @@ def main():
         else:
             print("ERROR: ARDUINO DISCONNECTED")
             break
+        if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
+            handleOBD()
+        else:
+            print("ERROR: OBD DISCONNECTED")
+            break
         i += 1
 
 def terminate():
     if VS: VS.stop()
+    if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
     print("PROGRAM TERMINATED")
 
 if __name__ == "__main__":
     STATE = OKAY
     WARNING_COUNTER = 0
-    initialize_Arduino()
+    get_available_serial_ports()
     initialize_camera()
     initialize_OBD()
+    initialize_Arduino()
     main()
     terminate()

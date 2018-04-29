@@ -75,7 +75,7 @@ predictor = dlib.shape_predictor(args["shape_predictor"])
 
 # start the video stream thread
 print("[INFO] starting video stream thread...")
-vs = VideoStream(src=0).start()
+vs = VideoStream(src=1).start()
 # vs = VideoStream(usePiCamera=True).start()
 time.sleep(1.0)
 
@@ -162,11 +162,11 @@ while True:
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
 		# thresholds and frame counters
-#		cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30),
-#			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+		cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30),
+			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
  
 	# show the frame
-#	cv2.imshow("Frame", frame)
+	cv2.imshow("Frame", frame)
 
 	key = cv2.waitKey(1) & 0xFF
  

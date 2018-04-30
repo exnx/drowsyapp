@@ -2,7 +2,7 @@ import serial
 import sys
 import glob
 import time
-from imutils.video import VideoStream
+# from imutils.video import VideoStream
 from imutils import face_utils
 import numpy as np
 import argparse
@@ -30,28 +30,6 @@ speed = 0
 
 ## -------------  For recording video
 
-FILE_OUTPUT = ''
-
-# check for duplicate files, adds time stamp
-if os.path.exists('output.avi'):
-    FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
-else:
-    FILE_OUTPUT = 'output.avi'
-    
-# for recording the video
-cap = cv2.VideoCapture(0)
-width_val = int(cap.get(3))
-height_val = int(cap.get(4))
-
-time.sleep(2.0)  # let camera warm up
-
-# Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-
-# the video writer object
-out = cv2.VideoWriter(FILE_OUTPUT,fourcc, 20.0, (int(width_val),int(height_val)))
-
-## -------------  For recording video
 
 args = {
     "cascade": "haarcascade_frontalface_default.xml",
@@ -65,13 +43,18 @@ rStart = None
 rEnd = None
 detector = None
 predictor = None
-VS = None
+# VS = None
+CAP = None
+out_file = None
 
 closeStart = None
 openStart = None
 CLOSE_THRESHOLD = 2 # number of seconds to allow eyes closed before warning/alarm
 OPEN_THRESHOLD = 0.2 # number of seconds to confirm eyes open before dismissing close timer
 ALARM_ON = False
+
+# for calibrating camera window
+x1,x2,y1,y2 = 400,900,750,1250
 
 def get_available_serial_ports():
     """ Lists serial port names
@@ -152,7 +135,14 @@ def initialize_Arduino():
         print("ARDUINO INITIALIZE: FAIL")
 
 def initialize_camera(verbose=False):
-    global detector, predictor, lStart, lEnd, rStart, rEnd, VS
+    global detector, predictor, lStart, lEnd, rStart, rEnd, CAP, out_file
+    
+    FILE_OUTPUT = ''
+    # check for duplicate files, adds time stamp
+    if os.path.exists('output.avi'):
+        FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+    else:
+        FILE_OUTPUT = 'output.avi'
     if verbose: print("CAMERA INITIALIZE: Loading facial landmark predictor...")
     # load Haar cascade & create facial landmark predictor
     detector = cv2.CascadeClassifier(args["cascade"])
@@ -162,10 +152,24 @@ def initialize_camera(verbose=False):
     (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
     if verbose: print("CAMERA INITIALIZE: Starting video stream thread")
     # start video stream and wait temporarily
-    VS = VideoStream(src=0).start()
+    # VS = VideoStream(src=0).start()
+    CAP = cv2.VideoCapture(1)  # set camera number here (0 or 1)
+    CAP.set(cv2.CAP_PROP_AUTOFOCUS, 0) # turn the autofocus off, unsure if works
+    time.sleep(2.0)
+    # width_val = int(CAP.get(3))
+    # height_val = int(CAP.get(4))
+    time.sleep(2.0)  # let camera warm up
+	# Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+	# the video writer object
+    # out_file = cv2.VideoWriter(FILE_OUTPUT,fourcc, 20.0, (int(width_val),
+    #     int(height_val)))
+    out_file = cv2.VideoWriter(FILE_OUTPUT,fourcc, 20.0, (int(x2-x1),
+        int(y2-y1)))
+        
+        
     # vs = VideoStream(usePiCamera=True).start()
-    time.sleep(1.0)
-    if VS:
+    if CAP:
         print("CAMERA INITIALIZE: SUCCESS")
     else:
         print("CAMERA INITIALIZE: FAIL")
@@ -217,18 +221,18 @@ def handleArduino(verbose=False):
 def eye_aspect_ratio(eye):
 	# compute the euclidean distances between the two sets of
 	# vertical eye landmarks (x, y)-coordinates
-	A = np.linalg.norm(eye[1] - eye[5])
-	B = np.linalg.norm(eye[2] - eye[4])
+    A = np.linalg.norm(eye[1] - eye[5])
+    B = np.linalg.norm(eye[2] - eye[4])
 
 	# compute the euclidean distance between the horizontal
 	# eye landmark (x, y)-coordinates
-	C = np.linalg.norm(eye[0] - eye[3])
+    C = np.linalg.norm(eye[0] - eye[3])
 
 	# compute the eye aspect ratio
-	ear = (A + B) / (2.0 * C)
+    ear = (A + B) / (2.0 * C)
 
 	# return the eye aspect ratio
-	return ear
+    return ear
 
 def handleCamera():
     global VS, detector, predictor
@@ -236,11 +240,20 @@ def handleCamera():
     global CLOSE_THRESHOLD, OPEN_THRESHOLD
     global STATE, OKAY, WARNING, ALARM, closeStart, openStart, WARNING_COUNTER
     # grab frame, resize, and convert to grayscale
-    frame = VS.read()
-    frame = imutils.resize(frame, width=450)
+    # frame = VS.read()
+    # frame = imutils.resize(frame, width=450)
+    ret,frame = CAP.read()
+    width_val = int(CAP.get(3))
+    height_val = int(CAP.get(4))
+    
+    # print(width_val,height_val)
+    # exit()
+    frame = frame[x1:x2,y1:y2]  # height x width cropping
+    # cv2.imshow("Frame",frame[0:50,0:50])
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # detect faces in the grayscale frame
-    faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
+    faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, 
+        minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
     # loop over all detected faces
     for (x,y,w,h) in faces:
         # construct a dlib rectable from Haar cascade bounding box
@@ -253,8 +266,8 @@ def handleCamera():
         leftEAR = eye_aspect_ratio(leftEye)
         rightEAR = eye_aspect_ratio(rightEye)
         ear = (leftEAR + rightEAR) / 2
-    	# compute the convex hull for the left and right eye, then
-		# visualize each of the eyes
+        # compute the convex hull for the left and right eye, then
+         # visualize each of the eyes
         leftEyeHull = cv2.convexHull(leftEye)
         rightEyeHull = cv2.convexHull(rightEye)
         cv2.drawContours(frame, [leftEyeHull], -1,(0,255,0),1)
@@ -268,7 +281,8 @@ def handleCamera():
                 print("CLOSED DURATION: {} sec".format(closeDuration))
                 if closeDuration > CLOSE_THRESHOLD: # eyes have been closed too long
                     print("DROWSINESS ALARM!")
-                    cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                     if STATE == OKAY: # if previous state was okay, trigger warning
                         WARNING_COUNTER += 1
                         
@@ -301,7 +315,11 @@ def handleCamera():
     # show the frame
     cv2.imshow("Frame",frame)
     # recording the video to file
-    out.write(frame)
+    out_file.write(frame)
+    key = cv2.waitKey(1) & 0xFF  # need this to allow frame to show up on screen
+	# if the `q` key was pressed, break from the loop
+    if key == ord("q"):
+        pass
 
 def handleOBD():
     global OBD_PORT, speed
@@ -311,9 +329,10 @@ def handleOBD():
 def main():
     global STATE, OKAY, WARNING, ALARM
     i = 0
+    handleCamera()
     while (True):
         if not i % 100: print("STATE {}: {}".format(i, STATE))
-        if VS:
+        if CAP:
             handleCamera()
         else:
             print("ERROR: CAMERA DISCONNECTED")
@@ -331,7 +350,7 @@ def main():
         i += 1
 
 def terminate():
-    if VS: VS.stop()
+    if CAP: CAP.release()
     # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
     print("PROGRAM TERMINATED")
 

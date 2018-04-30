@@ -1,6 +1,6 @@
 # USAGE
-# python3 pi_detect_drowsiness_record.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat
-# python3 pi_detect_drowsiness_record.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat --alarm 1
+# python3 pi_detect_drowsiness_record2.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat
+# python3 pi_detect_drowsiness_record2.py --cascade haarcascade_frontalface_default.xml --shape-predictor shape_predictor_68_face_landmarks.dat --alarm 1
 
 # import the necessary packages
 from imutils.video import VideoStream
@@ -19,9 +19,9 @@ FILE_OUTPUT = ''
 
 # check for duplicate files, adds time stamp
 if os.path.exists('output.avi'):
-    FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+	FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
 else:
-    FILE_OUTPUT = 'output.avi'
+	FILE_OUTPUT = 'output.avi'
 
 # for recording the video
 cap = cv2.VideoCapture(0)
@@ -96,52 +96,49 @@ predictor = dlib.shape_predictor(args["shape_predictor"])
 
 # start the video stream thread
 print("[INFO] starting video stream thread...")
-vs = VideoStream(src=0).start()
+# vs = VideoStream(src=0).start()
 # vs = VideoStream(usePiCamera=True).start()
-time.sleep(1.0)
-
-
+# cap = cv2.VideoCapture(0)
+# time.sleep(1.0)
 # test 
 i = 0
-
 # loop over frames from the video stream
-while True:
+# while cap.isOpened():
+while(True):
 	# grab the frame from the threaded video file stream, resize
 	# it, and convert it to grayscale
 	# channels)
-	frame = vs.read()
+	# ret, frame = cap.read()
+	ret, frame = cap.read()
+	# print(int(cap.get(4)),int(cap.get(3)))
+	# if ret==True:
+	# frame = cv2.flip(frame,1)
+    
 	# frame = imutils.resize(frame, width=450)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
 	# detect faces in the grayscale frame
 	rects = detector.detectMultiScale(gray, scaleFactor=1.1, 
 		minNeighbors=5, minSize=(30, 30),
 		flags=cv2.CASCADE_SCALE_IMAGE)
-
 	# loop over the face detections
 	for (x, y, w, h) in rects:
-		
-		# construct a dlib rectangle object from the Haar cascade
+        # construct a dlib rectangle object from the Haar cascade
 		# bounding box
 		rect = dlib.rectangle(int(x), int(y), int(x + w),
-			int(y + h))
-
+		int(y + h))
 		# determine the facial landmarks for the face region, then
 		# convert the facial landmark (x, y)-coordinates to a NumPy
 		# array
 		shape = predictor(gray, rect)
 		shape = face_utils.shape_to_np(shape)
-
 		# extract the left and right eye coordinates, then use the
 		# coordinates to compute the eye aspect ratio for both eyes
 		leftEye = shape[lStart:lEnd]
 		rightEye = shape[rStart:rEnd]
 		leftEAR = eye_aspect_ratio(leftEye)
 		rightEAR = eye_aspect_ratio(rightEye)
-
 		# average the eye aspect ratio together for both eyes
 		ear = (leftEAR + rightEAR) / 2.0
-
 		# compute the convex hull for the left and right eye, then
 		# visualize each of the eyes
 		leftEyeHull = cv2.convexHull(leftEye)
@@ -153,7 +150,6 @@ while True:
 		if ear < EYE_AR_THRESH:
 			print("eyes are closed {}, counter = {}".format(i, COUNTER))
 			i+=1
-			
 			COUNTER += 1
 			# if the eyes were closed for a sufficient number of
 			# frames, then sound the alarm
@@ -165,8 +161,8 @@ while True:
 					
 					# check to see if the TrafficHat buzzer should
 					# be sounded
-				# if args["alarm"] > 0: 
-				# 	print("alarm!!!!")    
+				# if args["alarm"] > 0:
+				# 	print("alarm!!!!")
 					# 	th.buzzer.blink(0.1, 0.1, 10,
 					# 		background=True)
 				# draw an alarm on the frame
@@ -179,24 +175,19 @@ while True:
 			print("eyes are opened {}, counter = {}".format(i, COUNTER))
 			i+=1
 			# ALARM_ON = False
-
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
 		# thresholds and frame counters
 		cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
- 
-	# show the frame
+    	# show the frame
 	cv2.imshow("Frame", frame)
-	
 	out.write(frame)  # recording the video to file
-
 	key = cv2.waitKey(1) & 0xFF
- 
+    
 	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):
 		break
-
 # do a bit of cleanup
 cv2.destroyAllWindows()
-vs.stop()
+# vs.stop()

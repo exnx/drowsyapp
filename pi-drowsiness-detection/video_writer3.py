@@ -23,10 +23,17 @@ else:
 # Playing video from file:
 # cap = cv2.VideoCapture('vtest.avi')
 # Capturing video from webcam:
-vs = VideoStream(src=0).start()
-cap = cv2.VideoCapture(0)
+vs = VideoStream(src=1).start()
+# frame = vs.read()
+# frame = imutils.resize(frame, width=450)
+# (height_val, width_val) = frame.shape[:2]
+
+cap = cv2.VideoCapture(1)
 width_val = int(cap.get(3))
 height_val = int(cap.get(4))
+# print(cap.shape)
+
+print(height_val, width_val)
 
 time.sleep(2.0)
 fps = FPS().start()
@@ -61,9 +68,13 @@ while(True):
     
     frame = vs.read()
 	# frame = imutils.resize(frame, width=width_val)
+    # frame = imutils.resize(frame, width=450)
+    # frame = image(400,300,400,300)
     
     # Saves for video
     out.write(frame)
+    
+    # frame = frame[0:1500,0:1200]
     
     # Display the resulting frame
     cv2.imshow('frame',frame)

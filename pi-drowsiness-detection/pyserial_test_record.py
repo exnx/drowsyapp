@@ -74,7 +74,6 @@ def get_available_serial_ports():
         ports = glob.glob('/dev/tty.*')
     else:
         raise EnvironmentError('Unsupported platform')
-
     result = []
     for port in ports:
         try:
@@ -137,6 +136,13 @@ def initialize_Arduino():
 def initialize_camera(verbose=False):
     global detector, predictor, lStart, lEnd, rStart, rEnd, CAP, out_file
     
+    ## for writing a single video file, overwrites over and over
+    # FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+	# 
+    # if os.path.exists(FILE_OUTPUT):
+    #     os.remove(FILE_OUTPUT)
+	
+	# for writing multiple file outputs
     FILE_OUTPUT = ''
     # check for duplicate files, adds time stamp
     if os.path.exists('output.avi'):
@@ -155,7 +161,6 @@ def initialize_camera(verbose=False):
     # VS = VideoStream(src=0).start()
     CAP = cv2.VideoCapture(1)  # set camera number here (0 or 1)
     CAP.set(cv2.CAP_PROP_AUTOFOCUS, 0) # turn the autofocus off, unsure if works
-    time.sleep(2.0)
     # width_val = int(CAP.get(3))
     # height_val = int(CAP.get(4))
     time.sleep(2.0)  # let camera warm up
@@ -166,8 +171,6 @@ def initialize_camera(verbose=False):
     #     int(height_val)))
     out_file = cv2.VideoWriter(FILE_OUTPUT,fourcc, 20.0, (int(x2-x1),
         int(y2-y1)))
-        
-        
     # vs = VideoStream(usePiCamera=True).start()
     if CAP:
         print("CAMERA INITIALIZE: SUCCESS")
@@ -234,7 +237,9 @@ def eye_aspect_ratio(eye):
 	# return the eye aspect ratio
     return ear
 
-def handleCamera():
+def handleCamera(debugMode=False):
+    global OBD, speed
+    global out_file
     global VS, detector, predictor
     global lStart, lEnd, rStart, rEnd, EYE_AR_THRESH
     global CLOSE_THRESHOLD, OPEN_THRESHOLD
@@ -243,8 +248,8 @@ def handleCamera():
     # frame = VS.read()
     # frame = imutils.resize(frame, width=450)
     ret,frame = CAP.read()
-    width_val = int(CAP.get(3))
-    height_val = int(CAP.get(4))
+    # width_val = int(CAP.get(3))
+    # height_val = int(CAP.get(4))
     
     # print(width_val,height_val)
     # exit()
@@ -270,8 +275,9 @@ def handleCamera():
          # visualize each of the eyes
         leftEyeHull = cv2.convexHull(leftEye)
         rightEyeHull = cv2.convexHull(rightEye)
-        cv2.drawContours(frame, [leftEyeHull], -1,(0,255,0),1)
-        cv2.drawContours(frame, [rightEyeHull], -1,(0,255,0),1)
+        if debugMode: 
+            cv2.drawContours(frame, [leftEyeHull], -1,(0,255,0),1)
+            cv2.drawContours(frame, [rightEyeHull], -1,(0,255,0),1)
         # check if average EAR is below threshold (eyes closed)
         if ear < EYE_AR_THRESH:
             # print("EAR: {}, THRESH: {}".format(averageEAR, EYE_AR_THRESH))
@@ -281,19 +287,19 @@ def handleCamera():
                 print("CLOSED DURATION: {} sec".format(closeDuration))
                 if closeDuration > CLOSE_THRESHOLD: # eyes have been closed too long
                     print("DROWSINESS ALARM!")
-                    cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),
+                    if debugMode: cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                    if STATE == OKAY: # if previous state was okay, trigger warning
+                    if STATE == OKAY and ((OBD_PORT and speed != 0) or (not OBD_PORT)): # if previous state was okay, trigger warning. if obd is connected, also check if car is moving
                         WARNING_COUNTER += 1
                         
                         if WARNING_COUNTER > WARNING_THRESHOLD:
                             STATE = ALARM
                             # Display Alarm on frame
-                            # cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                            if debugMode: cv2.putText(frame, "DROWSINESS ALARM!", (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                         else:
                             STATE = WARNING
                             # Display warning on frame
-                            # cv2.putText(frame, "DROWSINESS WARNING!", (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                            if debugMode: cv2.putText(frame, "DROWSINESS WARNING!", (10, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             else:
                 closeStart = time.time() # start timer for eyes closed
         else:
@@ -311,55 +317,62 @@ def handleCamera():
         # draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
 		# thresholds and frame counters
-        cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-    # show the frame
-    cv2.imshow("Frame",frame)
-    # recording the video to file
-    out_file.write(frame)
-    key = cv2.waitKey(1) & 0xFF  # need this to allow frame to show up on screen
-	# if the `q` key was pressed, break from the loop
-    if key == ord("q"):
-        pass
+        if debugMode: cv2.putText(frame, "EAR: {:.3f}".format(ear), (300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    if debugMode: 
+		# show the frame
+        cv2.imshow("Frame",frame)
+        # recording the video to file
+        debugMode: out_file.write(frame)
+        key = cv2.waitKey(1) & 0xFF  # need this to allow frame to show up on screen
+		# if the `q` key was pressed, break from the loop
+        if key == ord("q"):
+            pass
 
 def handleOBD():
     global OBD_PORT, speed
     speed = OBD_PORT.query(obd.commands.SPEED).value.magnitude
     print("SPEED: {}".format(speed)) # non-blocking, returns immediately
 
-def main():
+def main(obd=True, arduino=True, debug=False):
     global STATE, OKAY, WARNING, ALARM
     i = 0
     handleCamera()
     while (True):
-        if not i % 100: print("STATE {}: {}".format(i, STATE))
+        if debug: 
+            if not i % 100: print("STATE {}: {}".format(i, STATE))
         if CAP:
-            handleCamera()
+            handleCamera(debugMode=debug)
         else:
             print("ERROR: CAMERA DISCONNECTED")
             break
-        # if ARDUINO_PORT:
-        #     handleArduino()
-        # else:
-        #     print("ERROR: ARDUINO DISCONNECTED")
-        #     break
-        # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
-        #     handleOBD()
-        # else:
-        #     print("ERROR: OBD DISCONNECTED")
-        #     break
+        if arduino:
+            if ARDUINO_PORT:
+                handleArduino()
+            else:
+                print("ERROR: ARDUINO DISCONNECTED")
+                break
+        if obd:
+            if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
+                handleOBD()
+            else:
+                print("ERROR: OBD DISCONNECTED")
+                break
         i += 1
 
 def terminate():
     if CAP: CAP.release()
-    # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
+    if OBD_PORT and OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
     print("PROGRAM TERMINATED")
 
 if __name__ == "__main__":
+    obd = False
+    arduino = False
+    debug = True
     STATE = OKAY
     WARNING_COUNTER = 0
     get_available_serial_ports()
     initialize_camera()
-    # initialize_OBD()
-    # initialize_Arduino()
-    main()
+    if obd: initialize_OBD()
+    if arduino: initialize_Arduino()
+    main(obd=obd, arduino=arduino, debug=debug)
     terminate()

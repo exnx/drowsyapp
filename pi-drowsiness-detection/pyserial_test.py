@@ -204,11 +204,18 @@ def eye_aspect_ratio(eye):
 	# return the eye aspect ratio
 	return ear
 
-def handleCamera():
+def handleCamera(verbose=False):
     global VS, detector, predictor
     global lStart, lEnd, rStart, rEnd, EYE_AR_THRESH
     global CLOSE_THRESHOLD, OPEN_THRESHOLD
     global STATE, OKAY, WARNING, ALARM, closeStart, openStart, WARNING_COUNTER
+    
+    if verbose:
+        if STATE == WARNING:
+            print("WARNING WARNING WARNING WARNING WARNING WARNING {}".format(WARNING_COUNTER))
+        elif STATE == ALARM:
+            print("ALARM ALARM ALARM ALARM ALARM ALARM ALARM ALARM")
+    
     # grab frame, resize, and convert to grayscale
     frame = VS.read()
     frame = imutils.resize(frame, width=450)
@@ -260,31 +267,31 @@ def handleOBD():
     speed = OBD_PORT.query(obd.commands.SPEED).value.magnitude
     print("SPEED: {}".format(speed)) # non-blocking, returns immediately
 
-def main():
+def main(verbose=False):
     global STATE, OKAY, WARNING, ALARM
     i = 0
     while (True):
         if not i % 100: print("STATE {}: {}".format(i, STATE))
         if VS:
-            handleCamera()
+            handleCamera(verbose=verbose)
         else:
             print("ERROR: CAMERA DISCONNECTED")
             break
-        if ARDUINO_PORT:
-            handleArduino()
-        else:
-            print("ERROR: ARDUINO DISCONNECTED")
-            break
-        if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
-            handleOBD()
-        else:
-            print("ERROR: OBD DISCONNECTED")
-            break
+        # if ARDUINO_PORT:
+        #     handleArduino()
+        # else:
+        #     print("ERROR: ARDUINO DISCONNECTED")
+        #     break
+        # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
+        #     handleOBD()
+        # else:
+        #     print("ERROR: OBD DISCONNECTED")
+        #     break
         i += 1
 
 def terminate():
     if VS: VS.stop()
-    if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
+    # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
     print("PROGRAM TERMINATED")
 
 if __name__ == "__main__":
@@ -292,7 +299,7 @@ if __name__ == "__main__":
     WARNING_COUNTER = 0
     get_available_serial_ports()
     initialize_camera()
-    initialize_OBD()
-    initialize_Arduino()
-    main()
+    # initialize_OBD()
+    # initialize_Arduino()
+    main(verbose=True)
     terminate()

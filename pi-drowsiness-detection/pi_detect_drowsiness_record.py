@@ -13,6 +13,7 @@ import dlib
 import cv2
 import os
 
+
 ## -------------  
 
 FILE_OUTPUT = ''
@@ -99,8 +100,6 @@ print("[INFO] starting video stream thread...")
 vs = VideoStream(src=0).start()
 # vs = VideoStream(usePiCamera=True).start()
 time.sleep(1.0)
-
-
 # test 
 i = 0
 

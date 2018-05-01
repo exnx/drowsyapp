@@ -15,13 +15,19 @@ import os
 
 ## -------------  
 
-FILE_OUTPUT = ''
+# FILE_OUTPUT = ''
 
-# check for duplicate files, adds time stamp
-if os.path.exists('output.avi'):
-	FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
-else:
-	FILE_OUTPUT = 'output.avi'
+# for writing multiple video files
+# if os.path.exists('output.avi'):
+# 	FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+# else:
+# 	FILE_OUTPUT = 'output.avi'
+    
+## for writing a single video file, overrites over and over
+FILE_OUTPUT = 'output_{}.avi'.format(int(time.time()))
+
+if os.path.exists(FILE_OUTPUT):
+	os.remove(FILE_OUTPUT)
 
 # for recording the video
 cap = cv2.VideoCapture(0)

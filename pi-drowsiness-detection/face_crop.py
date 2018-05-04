@@ -9,6 +9,17 @@ import argparse
 import imutils
 import dlib
 import cv2
+import serial
+import sys
+import glob
+import time
+from imutils.video import VideoStream
+from imutils import face_utils
+import numpy as np
+import argparse
+import imutils
+import dlib
+import cv2
 import obd
 import os
 
@@ -20,7 +31,7 @@ WARNING = 1
 ALARM = 2
 STATE = OKAY # 0: okay, 1: warning, 2: alarm
 WARNING_COUNTER = 0
-WARNING_THRESHOLD = 2 # number of warnings to allow before alarm instead
+WARNING_THRESHOLD = 3 # number of warnings to allow before alarm instead
 
 available_ports = []
 
@@ -92,7 +103,7 @@ def getPortName(connection):
         if machine == "darwin": # running from Macbook
             return '/dev/tty.SLAB_USBtoUART'
         elif machine == "linux": # running from RaspberryPi
-            return '/dev/ttyUSB0'            
+            return '/dev/ttyUSB0'
     elif connection == "obd":
         if machine == "darwin": # running from Macbook
             return '/dev/tty.usbserial-1420'
@@ -130,7 +141,7 @@ def initialize_Arduino():
         print("ARDUINO INITIALIZE: FAIL")
 
 def initialize_camera(verbose=False, logCamera=True):
-    global detector, predictor, lStart, lEnd, rStart, rEnd, VS
+    global detector, predictor, lStart, lEnd, rStart, rEnd, VS, machine
     if verbose: print("CAMERA INITIALIZE: Loading facial landmark predictor...")
     # load Haar cascade & create facial landmark predictor
     detector = cv2.CascadeClassifier(args["cascade"])
@@ -140,10 +151,10 @@ def initialize_camera(verbose=False, logCamera=True):
     (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
     if verbose: print("CAMERA INITIALIZE: Starting video stream thread")
     # start video stream and wait temporarily
-    if logCamera: 
-        VS = VideoStream(src=1).start()
-    else:
+    if machine=="linux" or not logCamera:
         VS = VideoStream(src=0).start()
+    else:
+        VS = VideoStream(src=1).start()
     # vs = VideoStream(usePiCamera=True).start()
     time.sleep(1.0)
     if VS:
@@ -216,23 +227,23 @@ def handleCamera(verbose=False, display=False):
     global lStart, lEnd, rStart, rEnd, EYE_AR_THRESH
     global CLOSE_THRESHOLD, OPEN_THRESHOLD
     global STATE, OKAY, WARNING, ALARM, closeStart, openStart, WARNING_COUNTER
-    
+
     if verbose:
         if STATE == WARNING:
             print("WARNING WARNING WARNING WARNING WARNING WARNING {}".format(WARNING_COUNTER))
         elif STATE == ALARM:
             print("ALARM ALARM ALARM ALARM ALARM ALARM ALARM ALARM")
-    
+
     # grab frame, resize, and convert to grayscale
     frame = VS.read()
-    frame = imutils.resize(frame, width=1080)
+    frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # detect faces in the grayscale frame
     faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
     # loop over all detected faces
     if len(faces) > 0:
         faceAreas = [w*h for (x,y,w,h) in faces]
-        (x,y,w,h) = faces[np.argmax(faceAreas)] # bind x, y, w, and h to the largest face        
+        (x,y,w,h) = faces[np.argmax(faceAreas)] # bind x, y, w, and h to the largest face
         # construct a dlib rectable from Haar cascade bounding box
         rect = dlib.rectangle(int(x), int(y), int(x + w), int(y + h))
         # get facial landmarks as numpy array
@@ -243,13 +254,13 @@ def handleCamera(verbose=False, display=False):
         leftEAR = eye_aspect_ratio(leftEye)
         rightEAR = eye_aspect_ratio(rightEye)
         averageEAR = (leftEAR + rightEAR) / 2
-        
+
         if display:
             leftEyeHull = cv2.convexHull(leftEye)
             rightEyeHull = cv2.convexHull(rightEye)
             cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
             cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
-            
+
         # check if average EAR is below threshold (eyes closed)
         if averageEAR < EYE_AR_THRESH:
             # print("EAR: {}, THRESH: {}".format(averageEAR, EYE_AR_THRESH))
@@ -277,24 +288,24 @@ def handleCamera(verbose=False, display=False):
                             STATE = OKAY
                 else:
                     openStart = time.time()  # start timer for eyes closed
-        
+
         if display:
             cv2.putText(frame, "EAR: {:.3f}".format(averageEAR), (300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             cv2.imshow("Frame", frame)
             key = cv2.waitKey(1) & 0xFF
 
-            
+
 
 def handleOBD():
     global OBD_PORT, speed
     speed = OBD_PORT.query(obd.commands.SPEED).value.magnitude
     print("SPEED: {}".format(speed)) # non-blocking, returns immediately
 
-def main(verbose=False, display=False):
+def main(verbose=False, display=False, use_arduino=True, use_obd=True):
     global STATE, OKAY, WARNING, ALARM, machine
-    
+
     if machine == "linux": display = False
-    
+
     i = 0
     while (True):
         if not i % 100: print("STATE {}: {}".format(i, STATE))
@@ -303,20 +314,22 @@ def main(verbose=False, display=False):
         else:
             print("ERROR: CAMERA DISCONNECTED")
             break
-        # if ARDUINO_PORT:
-        #     handleArduino()
-        # else:
-        #     print("ERROR: ARDUINO DISCONNECTED")
-        #     break
-        # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
-        #     handleOBD()
-        # else:
-        #     print("ERROR: OBD DISCONNECTED")
-        #     break
+        if use_arduino:
+            if ARDUINO_PORT:
+                handleArduino()
+            else:
+                print("ERROR: ARDUINO DISCONNECTED")
+                break
+        if use_obd:
+            if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED:
+                handleOBD()
+            else:
+                print("ERROR: OBD DISCONNECTED")
+                break
         i += 1
 
 def terminate(display=False):
-    if VS: 
+    if VS:
         if display: cv2.destroyAllWindows()
         VS.stop()
     # if OBD_PORT.status() == obd.OBDStatus.CAR_CONNECTED: OBD_PORT.stop()
@@ -326,9 +339,12 @@ if __name__ == "__main__":
     STATE = OKAY
     WARNING_COUNTER = 0
     display = True
+    use_arduino = True
+    use_obd = False
+
     get_available_serial_ports()
-    initialize_camera(logCamera=True)
-    # initialize_OBD()
-    # initialize_Arduino()
-    main(verbose=True, display=display)
+    initialize_camera(logCamera=False)
+    if use_obd: initialize_OBD()
+    if use_arduino: initialize_Arduino()
+    main(verbose=True, display=display, use_arduino=use_arduino, use_obd=use_obd)
     terminate(display=display)

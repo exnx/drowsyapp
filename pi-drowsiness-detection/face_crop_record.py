@@ -369,7 +369,7 @@ if __name__ == "__main__":
     STATE = OKAY
     WARNING_COUNTER = 0
     display = True
-    use_arduino = False
+    use_arduino = True
     use_obd = False
     
     # choose either single or multi file recording
